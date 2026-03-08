@@ -22,10 +22,7 @@ router.get("/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await pool.query(
-      "SELECT * FROM posts WHERE id = $1",
-      [id]
-    );
+    const result = await pool.query("SELECT * FROM posts WHERE id = $1", [id]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Post not found" });
@@ -58,6 +55,37 @@ const uploadToCloudinary = (buffer: Buffer): Promise<string> => {
 
     stream.end(buffer);
   });
+};
+
+const extractPublicIdFromCloudinaryUrl = (imageUrl: string): string | null => {
+  try {
+    if (!imageUrl.includes("res.cloudinary.com")) {
+      return null;
+    }
+
+    const parts = imageUrl.split("/");
+    const uploadIndex = parts.findIndex((part) => part === "upload");
+
+    if (uploadIndex === -1) {
+      return null;
+    }
+
+    // Tout ce qui vient après "upload"
+    let publicIdParts = parts.slice(uploadIndex + 1);
+
+    // Si présence de version type v123456789, on l'enlève
+    if (publicIdParts.length > 0 && /^v\d+$/.test(publicIdParts[0])) {
+      publicIdParts = publicIdParts.slice(1);
+    }
+
+    const lastPart = publicIdParts[publicIdParts.length - 1];
+    publicIdParts[publicIdParts.length - 1] = lastPart.replace(/\.[^/.]+$/, "");
+
+    return publicIdParts.join("/");
+  } catch (error) {
+    console.error("Extract public_id error:", error);
+    return null;
+  }
 };
 
 router.post("/", upload.single("image"), async (req, res) => {
@@ -122,16 +150,30 @@ router.delete("/:id", async (req, res) => {
   try {
     const { id } = req.params;
 
-    const result = await pool.query(
-      "DELETE FROM posts WHERE id = $1 RETURNING *",
-      [id]
-    );
+    const postResult = await pool.query("SELECT * FROM posts WHERE id = $1", [
+      id,
+    ]);
 
-    if (result.rows.length === 0) {
+    if (postResult.rows.length === 0) {
       return res.status(404).json({ message: "Post not found" });
     }
 
-    return res.json({ message: "Post deleted successfully" });
+    const post = postResult.rows[0];
+    const imageUrl: string | null = post.image_url;
+
+    if (imageUrl) {
+      const publicId = extractPublicIdFromCloudinaryUrl(imageUrl);
+
+      if (publicId) {
+        await cloudinary.uploader.destroy(publicId);
+      }
+    }
+
+    await pool.query("DELETE FROM posts WHERE id = $1", [id]);
+
+    return res.json({
+      message: "Post and image deleted successfully",
+    });
   } catch (error) {
     console.error("Delete post error:", error);
     return res.status(500).json({ message: "Server error" });
