@@ -11,15 +11,30 @@ class ApiService {
 
   Future<Map<String, dynamic>?> login(String username, String password) async {
     try {
+      final trimmedUsername = username.trim();
+      final trimmedPassword = password.trim();
+
+      print('Attempting login with username: $trimmedUsername');
+
       final response = await client.post(
         Uri.parse('$baseUrl/auth/login'),
         headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'username': username, 'password': password}),
+        body: jsonEncode({
+          'username': trimmedUsername,
+          'password': trimmedPassword,
+        }),
       );
 
+      print('Login response status: ${response.statusCode}');
+      print('Login response body: ${response.body}');
+
       if (response.statusCode == 200) {
-        return jsonDecode(response.body);
+        final result = jsonDecode(response.body);
+        print('Login successful, result: $result');
+        return result;
       } else {
+        print('Login failed with status: ${response.statusCode}');
+        print('Response: ${response.body}');
         return null;
       }
     } catch (e) {

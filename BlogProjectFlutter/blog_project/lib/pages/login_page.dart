@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:blog_project/providers/auth_provider.dart';
+import 'package:blog_project/widgets/login_header.dart';
+import 'package:blog_project/widgets/login_card.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -19,88 +21,77 @@ class _LoginPageState extends State<LoginPage> {
     final authProvider = Provider.of<AuthProvider>(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Connexion Admin')),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Form(
-          key: _formKey,
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
-                'Connexion Admin',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                'Connecte-toi pour gérer les articles et les utilisateurs.',
-                style: TextStyle(fontSize: 14, color: Colors.grey),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 40),
-              TextFormField(
-                controller: _usernameController,
-                decoration: const InputDecoration(
-                  labelText: 'Username',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Veuillez entrer votre username';
-                  }
-                  return null;
+              // Header
+              LoginHeader(
+                onBackTap: () {
+                  Navigator.pop(context);
                 },
               ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: _passwordController,
-                decoration: const InputDecoration(
-                  labelText: 'Mot de passe',
-                  border: OutlineInputBorder(),
-                ),
-                obscureText: true,
-                validator: (value) {
-                  if (value == null || value.isEmpty) {
-                    return 'Veuillez entrer votre mot de passe';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 40),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: authProvider.isLoading
-                      ? null
-                      : () async {
-                          if (_formKey.currentState!.validate()) {
-                            final success = await authProvider.login(
-                              _usernameController.text,
-                              _passwordController.text,
-                            );
 
-                            if (success) {
-                              Navigator.pushReplacementNamed(
-                                context,
-                                '/dashboard',
-                              );
-                            } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Échec de connexion'),
-                                  backgroundColor: Colors.red,
-                                ),
-                              );
-                            }
-                          }
-                        },
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                  ),
-                  child: authProvider.isLoading
-                      ? const CircularProgressIndicator()
-                      : const Text('Se connecter'),
-                ),
+              const SizedBox(height: 40),
+
+              // Login card
+              LoginCard(
+                usernameController: _usernameController,
+                passwordController: _passwordController,
+                obscureText: authProvider.obscureText,
+                onToggleObscureText: () {
+                  authProvider.toggleObscureText();
+                },
+                onLogin: () async {
+                  final trimmedUsername = _usernameController.text.trim();
+                  final trimmedPassword = _passwordController.text.trim();
+
+                  if (trimmedUsername.isNotEmpty &&
+                      trimmedPassword.isNotEmpty) {
+                    final success = await authProvider.login(
+                      trimmedUsername,
+                      trimmedPassword,
+                    );
+
+                    if (success) {
+                      print('Navigation to dashboard');
+                      Navigator.pushReplacementNamed(context, '/dashboard');
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'Nom d\'utilisateur ou mot de passe incorrect',
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Veuillez remplir tous les champs'),
+                        backgroundColor: Colors.orange,
+                      ),
+                    );
+                  }
+                },
+                isLoading: authProvider.isLoading,
+                onUsernameChanged: (value) {
+                  // Optional: handle username changes
+                },
+                onPasswordChanged: (value) {
+                  // Optional: handle password changes
+                },
+              ),
+
+              const SizedBox(height: 32),
+
+              // Footer
+              const Text(
+                '© 2024 Mon Blog Admin. Tous droits réservés.',
+                style: TextStyle(fontSize: 12, color: Color(0xFF999999)),
               ),
             ],
           ),

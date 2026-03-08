@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:blog_project/services/api_service.dart';
 import 'package:blog_project/models/admin.dart';
+import 'package:blog_project/widgets/admin_users_header.dart';
+import 'package:blog_project/widgets/add_admin_user_card.dart';
+import 'package:blog_project/widgets/admin_users_table_card.dart';
+import 'package:blog_project/widgets/admin_bottom_nav.dart';
 
 class UsersListPage extends StatefulWidget {
   const UsersListPage({Key? key}) : super(key: key);
@@ -78,7 +82,7 @@ class _UsersListPageState extends State<UsersListPage> {
     }
   }
 
-  Future<void> _deleteAdmin(int id) async {
+  Future<void> _deleteAdmin(Admin admin) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -100,7 +104,7 @@ class _UsersListPageState extends State<UsersListPage> {
     );
 
     if (confirmed == true) {
-      final success = await _apiService.deleteAdmin(id);
+      final success = await _apiService.deleteAdmin(admin.id);
       if (success) {
         await _loadAdmins();
         ScaffoldMessenger.of(context).showSnackBar(
@@ -123,152 +127,82 @@ class _UsersListPageState extends State<UsersListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Gestion des utilisateurs')),
-      body: Column(
-        children: [
-          // Add new admin form
-          Card(
-            margin: const EdgeInsets.all(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  const Text(
-                    'Ajouter un nouvel utilisateur',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _usernameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Username',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    decoration: const InputDecoration(
-                      labelText: 'Mot de passe',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _roleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Rôle (optionnel)',
-                      hintText: 'admin',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: _createAdmin,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                    ),
-                    child: const Text('Créer l\'utilisateur'),
-                  ),
-                ],
+      backgroundColor: const Color(0xFFF5F5F5),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            AdminUsersHeader(
+              onMenuTap: () {
+                // Handle menu tap
+              },
+            ),
+
+            const SizedBox(height: 16),
+
+            // Title
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: const Text(
+                'Liste des utilisateurs admin',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF333333),
+                ),
               ),
             ),
-          ),
 
-          // Admins list
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _admins.isEmpty
-              ? const Center(child: Text('Aucun utilisateur pour le moment'))
-              : Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _admins.length,
-                    itemBuilder: (context, index) {
-                      final admin = _admins[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                admin.username,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                admin.email,
-                                style: const TextStyle(color: Colors.grey),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Rôle: ${admin.role}',
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.blue,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Créé le ${admin.createdAt.day}/${admin.createdAt.month}/${admin.createdAt.year}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      // Edit functionality would go here
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Fonctionnalité de modification non implémentée',
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.orange,
-                                    ),
-                                    child: const Text('Modifier'),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  ElevatedButton(
-                                    onPressed: () => _deleteAdmin(admin.id),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red,
-                                    ),
-                                    child: const Text('Supprimer'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-        ],
+            const SizedBox(height: 16),
+
+            // Add user card
+            AddAdminUserCard(
+              usernameController: _usernameController,
+              emailController: _emailController,
+              passwordController: _passwordController,
+              roleController: _roleController,
+              selectedRole: 'admin',
+              onRoleChanged: (value) {
+                // Handle role change
+              },
+              onAddUser: _createAdmin,
+              isLoading: false,
+            ),
+
+            const SizedBox(height: 16),
+
+            // Users table
+            AdminUsersTableCard(
+              users: _admins,
+              onDeleteUser: _deleteAdmin,
+              isLoading: _isLoading,
+            ),
+
+            const SizedBox(height: 8),
+
+            // Bottom navigation
+            AdminBottomNav(
+              currentIndex: 1, // Users tab
+              onTap: (index) {
+                // Handle navigation
+                switch (index) {
+                  case 0:
+                    Navigator.pushNamed(context, '/dashboard');
+                    break;
+                  case 1:
+                    // Already on users page
+                    break;
+                  case 2:
+                    Navigator.pushNamed(context, '/dashboard/blogs');
+                    break;
+                  case 3:
+                    // Handle settings
+                    break;
+                }
+              },
+            ),
+          ],
+        ),
       ),
     );
   }

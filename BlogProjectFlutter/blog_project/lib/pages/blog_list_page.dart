@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:blog_project/services/api_service.dart';
+import 'package:blog_project/services/image_upload_service.dart';
 import 'package:blog_project/models/post.dart';
 import 'package:blog_project/pages/post_details_page.dart';
+import 'package:blog_project/widgets/blog_list_header.dart';
+import 'package:blog_project/widgets/add_article_card.dart';
+import 'package:blog_project/widgets/article_table_card.dart';
+import 'package:blog_project/widgets/admin_bottom_nav.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as path;
 import 'dart:io';
@@ -61,12 +66,33 @@ class _BlogListPageState extends State<BlogListPage> {
       return;
     }
 
-    // Note: Image upload would need to be implemented with multipart form data
-    // For now, we'll create the post without image
+    String? imageUrl = null;
+
+    // Upload image if selected
+    if (_imageFile != null) {
+      print(
+        'BlogListPage: Starting image upload for file: ${_imageFile!.path}',
+      );
+      final uploadService = ImageUploadService();
+      imageUrl = await uploadService.uploadImage(_imageFile!);
+      print('BlogListPage: Image upload result: $imageUrl');
+
+      if (imageUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors de l\'upload de l\'image'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
+    print('BlogListPage: Creating post with imageUrl: $imageUrl');
     final post = await _apiService.createPost(
       _titleController.text,
       _contentController.text,
-      null, // No image for now
+      imageUrl,
     );
 
     if (post != null) {
@@ -130,165 +156,142 @@ class _BlogListPageState extends State<BlogListPage> {
     }
   }
 
+  Future<void> _editPost(int id) async {
+    final post = await _apiService.getPost(id);
+    if (post == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Article non trouvé'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Fill form with existing data
+    _titleController.text = post.title;
+    _contentController.text = post.content;
+    _imageFile = null; // Image would need to be handled separately
+
+    // Navigate to edit mode or show edit form
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Formulaire prérempli avec les données existantes'),
+        backgroundColor: Colors.blue,
+      ),
+    );
+  }
+
+  Future<void> _updatePost(int id) async {
+    if (_titleController.text.isEmpty || _contentController.text.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Veuillez remplir tous les champs'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    String? imageUrl = null;
+
+    // Upload new image if selected
+    if (_imageFile != null) {
+      print(
+        'BlogListPage: Starting image upload for edit: ${_imageFile!.path}',
+      );
+      final uploadService = ImageUploadService();
+      imageUrl = await uploadService.uploadImage(_imageFile!);
+      print('BlogListPage: Image upload result for edit: $imageUrl');
+
+      if (imageUrl == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Erreur lors de l\'upload de l\'image'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
+    print('BlogListPage: Updating post with imageUrl: $imageUrl');
+    final post = await _apiService.updatePost(
+      id,
+      _titleController.text,
+      _contentController.text,
+      imageUrl,
+    );
+
+    if (post != null) {
+      _titleController.clear();
+      _contentController.clear();
+      _imageFile = null;
+      await _loadPosts();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Article mis à jour avec succès'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Erreur lors de la mise à jour de l\'article'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Gestion des articles')),
-      body: Column(
-        children: [
-          // Add new post form
-          Card(
-            margin: const EdgeInsets.all(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                children: [
-                  const Text(
-                    'Ajouter un nouvel article',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _titleController,
-                    decoration: const InputDecoration(
-                      labelText: 'Titre',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _contentController,
-                    maxLines: 4,
-                    decoration: const InputDecoration(
-                      labelText: 'Contenu',
-                      border: OutlineInputBorder(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  if (_imageFile != null)
-                    Image.file(
-                      _imageFile!,
-                      height: 100,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      ElevatedButton(
-                        onPressed: _pickImage,
-                        child: const Text('Choisir une image'),
-                      ),
-                      const SizedBox(width: 16),
-                      ElevatedButton(
-                        onPressed: _createPost,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.green,
-                        ),
-                        child: const Text('Créer l\'article'),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              // Header
+              const BlogListHeader(),
 
-          // Posts list
-          _isLoading
-              ? const Center(child: CircularProgressIndicator())
-              : _posts.isEmpty
-              ? const Center(child: Text('Aucun article pour le moment'))
-              : Expanded(
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: _posts.length,
-                    itemBuilder: (context, index) {
-                      final post = _posts[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                post.title,
-                                style: const TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                post.content.length > 100
-                                    ? '${post.content.substring(0, 100)}...'
-                                    : post.content,
-                                style: const TextStyle(color: Colors.grey),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Publié le ${post.createdAt.day}/${post.createdAt.month}/${post.createdAt.year}',
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                children: [
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              PostDetailsPage(postId: post.id),
-                                        ),
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.blue,
-                                    ),
-                                    child: const Text('Voir'),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      // Edit functionality would go here
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        const SnackBar(
-                                          content: Text(
-                                            'Fonctionnalité de modification non implémentée',
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.orange,
-                                    ),
-                                    child: const Text('Modifier'),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  ElevatedButton(
-                                    onPressed: () => _deletePost(post.id),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.red,
-                                    ),
-                                    child: const Text('Supprimer'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-        ],
+              const SizedBox(height: 16),
+
+              // Add article card
+              AddArticleCard(
+                titleController: _titleController,
+                contentController: _contentController,
+                selectedFileName: _imageFile?.path.split('/').last,
+                onFileSelect: _pickImage,
+                onAddArticle: _createPost,
+                isLoading: false,
+              ),
+
+              const SizedBox(height: 16),
+
+              // Articles table
+              ArticleTableCard(
+                articles: _posts,
+                isLoading: _isLoading,
+                onRefresh: _loadPosts,
+                onEdit: (post) => _editPost(post.id),
+                onDelete: (post) => _deletePost(post.id),
+              ),
+
+              const SizedBox(height: 80),
+            ],
+          ),
+        ),
+      ),
+
+      // Bottom navigation
+      bottomNavigationBar: AdminBottomNav(
+        currentIndex: 2,
+        onTap: (index) {
+          // Navigation logic would go here
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Navigate to $index')));
+        },
       ),
     );
   }

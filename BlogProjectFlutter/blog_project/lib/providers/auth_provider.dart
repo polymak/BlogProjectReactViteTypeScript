@@ -7,10 +7,12 @@ import 'package:blog_project/services/api_service.dart';
 class AuthProvider with ChangeNotifier {
   Admin? _currentUser;
   bool _isLoading = false;
+  bool _obscureText = true;
   final ApiService _apiService = ApiService();
 
   Admin? get currentUser => _currentUser;
   bool get isLoading => _isLoading;
+  bool get obscureText => _obscureText;
 
   AuthProvider() {
     _loadUserFromStorage();
@@ -39,28 +41,38 @@ class AuthProvider with ChangeNotifier {
     try {
       final result = await _apiService.login(username, password);
 
-      if (result != null) {
+      if (result != null &&
+          result is Map<String, dynamic> &&
+          result['admin'] != null &&
+          result['token'] != null &&
+          result['token'] is String &&
+          result['token'].isNotEmpty) {
         final prefs = await SharedPreferences.getInstance();
         final adminData = result['admin'];
         final token = result['token'];
 
-        _currentUser = Admin.fromJson(adminData);
-        await prefs.setString('admin', jsonEncode(adminData));
-        await prefs.setString('token', token);
+        if (adminData is Map<String, dynamic>) {
+          _currentUser = Admin.fromJson(adminData);
+          await prefs.setString('admin', jsonEncode(adminData));
+          await prefs.setString('token', token);
 
-        _isLoading = false;
-        notifyListeners();
-        return true;
+          print('Login successful: user stored in SharedPreferences');
+          _isLoading = false;
+          notifyListeners();
+          return true;
+        } else {
+          print('Login failed: invalid admin data format');
+        }
       } else {
-        _isLoading = false;
-        notifyListeners();
-        return false;
+        print('Login failed: invalid response or missing token');
       }
     } catch (e) {
-      _isLoading = false;
-      notifyListeners();
-      return false;
+      print('Login exception: $e');
     }
+
+    _isLoading = false;
+    notifyListeners();
+    return false;
   }
 
   Future<void> logout() async {
@@ -74,5 +86,10 @@ class AuthProvider with ChangeNotifier {
   String? getToken() {
     // In a real app, you would retrieve this from secure storage
     return null;
+  }
+
+  void toggleObscureText() {
+    _obscureText = !_obscureText;
+    notifyListeners();
   }
 }
