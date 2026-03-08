@@ -2,11 +2,12 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
-import { connectDB } from "./config/db";
+import { pool } from "./config/db";
 import { initDB } from "./config/initDb";
 import authRoutes from "./routes/authRoutes";
 import postRoutes from "./routes/postRoutes";
 import adminRoutes from "./routes/adminRoutes";
+
 
 dotenv.config();
 
@@ -28,12 +29,20 @@ app.use("/api/admins", adminRoutes);
 const PORT = process.env.PORT || 5000;
 
 const startServer = async () => {
-  await connectDB();
-  await initDB();
+  try {
+    await pool.connect();
+    console.log("PostgreSQL connected");
 
-  app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+    await initDB();
+
+    const PORT = process.env.PORT || 5000;
+
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  } catch (error) {
+    console.error("Database connection error:", error);
+  }
 };
 
 startServer();
