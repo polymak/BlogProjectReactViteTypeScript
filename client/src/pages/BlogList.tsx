@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import API, { BASE_UPLOAD_URL } from "../services/api";
+import API from "../services/api";
 
 interface Post {
   id: number;
@@ -145,9 +145,9 @@ export default function BlogList() {
           </thead>
           <tbody>
             {posts.map((post) => {
-              const imageSrc = post.image_url
-                ? `${BASE_UPLOAD_URL}${post.image_url}`
-                : "https://placehold.co/120x80?text=No+Image";
+const imageSrc = post.image_url
+  ? post.image_url
+  : "https://placehold.co/120x80?text=No+Image";
 
               return (
                 <tr key={post.id} className="border-t border-slate-200">

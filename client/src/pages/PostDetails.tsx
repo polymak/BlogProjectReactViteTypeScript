@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import API, { BASE_UPLOAD_URL } from "../services/api";
+import API from "../services/api";
 
 interface Post {
   id: number;
@@ -50,7 +50,7 @@ export default function PostDetails() {
   }
 
   const imageSrc = post.image_url
-    ? `${BASE_UPLOAD_URL}${post.image_url}`
+    ? post.image_url
     : "https://placehold.co/1200x600?text=No+Image";
 
   return (

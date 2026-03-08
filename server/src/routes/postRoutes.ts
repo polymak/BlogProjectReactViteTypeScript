@@ -1,6 +1,7 @@
 import express from "express";
 import { pool } from "../config/db";
 import { upload } from "../middleware/upload";
+import cloudinary from "../config/cloudinary";
 
 const router = express.Router();
 
@@ -9,6 +10,7 @@ router.get("/", async (_req, res) => {
     const result = await pool.query(
       "SELECT * FROM posts ORDER BY created_at DESC"
     );
+
     return res.json(result.rows);
   } catch (error) {
     console.error("Get posts error:", error);
@@ -36,15 +38,43 @@ router.get("/:id", async (req, res) => {
   }
 });
 
+const uploadToCloudinary = (buffer: Buffer): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder: "blog-project/posts",
+        resource_type: "image",
+      },
+      (error, result) => {
+        if (error) {
+          reject(error);
+        } else if (result?.secure_url) {
+          resolve(result.secure_url);
+        } else {
+          reject(new Error("Cloudinary upload failed"));
+        }
+      }
+    );
+
+    stream.end(buffer);
+  });
+};
+
 router.post("/", upload.single("image"), async (req, res) => {
   try {
     const { title, content } = req.body;
 
     if (!title || !content) {
-      return res.status(400).json({ message: "Title and content are required" });
+      return res
+        .status(400)
+        .json({ message: "Title and content are required" });
     }
 
-    const imageUrl = req.file ? `/uploads/${req.file.filename}` : null;
+    let imageUrl: string | null = null;
+
+    if (req.file) {
+      imageUrl = await uploadToCloudinary(req.file.buffer);
+    }
 
     const result = await pool.query(
       "INSERT INTO posts (title, content, image_url) VALUES ($1, $2, $3) RETURNING *",
@@ -66,7 +96,7 @@ router.put("/:id", upload.single("image"), async (req, res) => {
     let imageUrl = existing_image_url || null;
 
     if (req.file) {
-      imageUrl = `/uploads/${req.file.filename}`;
+      imageUrl = await uploadToCloudinary(req.file.buffer);
     }
 
     const result = await pool.query(

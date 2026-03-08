@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import API, { BASE_UPLOAD_URL } from "../services/api";
+import API from "../services/api";
 
 interface Post {
   id: number;
@@ -37,7 +37,7 @@ export default function Home() {
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
         {posts.map((post) => {
           const imageSrc = post.image_url
-            ? `${BASE_UPLOAD_URL}${post.image_url}`
+            ? post.image_url
             : "https://placehold.co/800x500?text=No+Image";
 
           return (
