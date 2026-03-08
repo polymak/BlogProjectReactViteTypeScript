@@ -1,9 +1,10 @@
 import axios from "axios";
 
-const API = axios.create({
-  baseURL: "http://localhost:5000/api",
-});
+export const API_URL = "https://blog-backend-kf3i.onrender.com/api";
+export const BASE_UPLOAD_URL = "https://blog-backend-kf3i.onrender.com";
 
-export const BASE_UPLOAD_URL = "http://localhost:5000";
+const API = axios.create({
+  baseURL: API_URL,
+});
 
 export default API;
